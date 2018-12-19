@@ -1,23 +1,32 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
-{-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module MarkovChain where
 
-import           Prelude hiding ((<>))
 import           GHC.TypeLits
 import           Numeric.LinearAlgebra.Static
+import           Prelude                      hiding
+                   ((<>))
 
 ------------------------------------------------------------------------
 
-reduced :: (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
-        => n - 1 <= n
-        => Sq n -> Sq (n - 1)
-reduced = fst . splitCols . fst . splitRows
+reduce :: (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
+       => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
+       => m - p <= m
+       => n - q <= n
+       => L m n -> L (m - p) (n - q)
+reduce = fst . splitCols . fst . splitRows
 
-restriction :: Sq 5 -> Sq 5
-restriction = undefined
+restrict :: (KnownNat m, KnownNat (m - p), KnownNat p)
+         => (KnownNat n, KnownNat (n - q), KnownNat q)
+         => p <= m
+         => q <= n
+         => L m n -> L (m - p) (n - q)
+restrict = snd . splitCols . snd . splitRows
 
 fundamental :: KnownNat n => Sq n -> Sq n
 fundamental q = inv (eye - q)
