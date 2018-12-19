@@ -1,3 +1,16 @@
 resolver: lts-12.22
 packages:
   - .
+nix:
+  enable: false
+  pure: false
+  packages: [
+    blas
+    gfortran.cc
+    glpk
+    gsl
+    haskellPackages.tasty-discover
+    liblapack
+    sundials
+    zlib
+    ]
