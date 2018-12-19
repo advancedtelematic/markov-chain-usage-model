@@ -17,3 +17,12 @@ Markov chain based usage models.
     Chain Usage
     Models](https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_91.pdf)
     (2017) by Lan Lin, Yufeng Xue and Fengguang Song.
+
+### See also
+
+  * The JUMBL library and tool ([documentation](http://jumbl.sourceforge.net/)
+    and [code](https://sourceforge.net/p/jumbl/code/ci/master/tree/))
+
+### License
+
+BSD-style (see the file LICENSE).
