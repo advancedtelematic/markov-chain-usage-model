@@ -3,6 +3,12 @@
 `markov-chain-usage-model` is a Haskell library for performing computations on
 Markov chain based usage models.
 
+### Pre-requisites
+
+This library depends on `hmatrix` which in turn requires development packages
+for BLAS/LAPACK and GSL to be
+[installed](https://github.com/haskell-numerics/hmatrix/blob/master/INSTALL.md).
+
 ### References
 
   * [Computations for Markov Chain Usage
