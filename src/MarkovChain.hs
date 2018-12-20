@@ -16,15 +16,6 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
-reduced
-  :: forall m n p q
-   . (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
-  => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
-  => m - p <= m
-  => n - q <= n
-  => L m n -> L (m - p) (n - q)
-reduced = fst . splitCols . fst . splitRows
-
 fundamental :: KnownNat n => Sq n -> Sq n
 fundamental q = inv (eye - q)
 
@@ -71,7 +62,7 @@ transientReliability q mprior obs = rstar
 
     fancyRdot :: L (n - 1) (n - 1)
     w :: L (n - 1) 1
-    (fancyRdot, w) =  splitCols fancyR
+    (fancyRdot, w) = splitCols fancyR
 
     rstar :: L (n - 1) 1
     rstar = inv (eye - fancyRdot) <> w
