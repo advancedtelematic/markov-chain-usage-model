@@ -2,10 +2,10 @@
 
 module Unit where
 
-import           GHC.TypeLits
 import           Numeric.LinearAlgebra.Static
-import           Prelude                      hiding ((<>))
+                   (L, ℝ, matrix, norm_2, unwrap)
 import           Test.Tasty.HUnit
+                   (Assertion, (@?), (@?=))
 
 import           MarkovChain
 
@@ -14,62 +14,50 @@ import           MarkovChain
 -- cf. A Simpler and More Direct Derivation of System Reliability Using Markov Chain Usage Models (2017)
 -- by Lan Lin, Yufeng Xue and Fengguang Song
 
--- Usage model.
-p :: Sq 3
-p = matrix
+-- Transient usage model (transitions from sink omitted).
+q :: L 2 3
+q = matrix
   [ 0, 0.5, 0.5
   , 0, 0.5, 0.5
-  , 0, 0,   0
   ]
 
--- Transient usage model.
-q :: L 2 3
-q = reduce p
-
-qdot :: Sq 2
-qdot = reduce p
-
--- Expected transient reliabilities.
-r1 :: L 2 3
-r1 = matrix
-  [ 0.1, 0.2, 0.3
-  , 0.4, 0.5, 0.6
+successes :: L 2 3
+successes = matrix
+  [ 1, 2, 3
+  , 4, 5, 6
   ]
 
-r1dot :: Sq 2
-r1dot = reduce r1
+failures :: L 2 3
+failures = matrix
+  [ 1, 0, 1
+  , 0, 1, 0
+  ]
 
--- Observed transient reliabilities.
-fancyR1 :: L 2 3
-fancyR1 = q * r1
+-- Observed transient success rate.
+r :: L 2 3
+r = successRate Nothing (successes, failures)
 
-fancyR1dot :: Sq 2
-fancyR1dot = qdot * r1dot
-
--- Last column vector of fancyR.
-w :: L 2 1
-w = restrict fancyR1
-
-unit_expectW :: Assertion
-unit_expectW = unwrap w @?= unwrap expected
+unit_expectSuccessRate :: Assertion
+unit_expectSuccessRate = unwrap r @?= unwrap expected
   where
-    expected :: L 2 1
+    expected :: L 2 3
     expected = matrix
-      [ 0.3/2
-      , 0.6/2
+      [ 2/4, 3/4, 4/6
+      , 5/6, 6/8, 7/8
       ]
 
--- Success rate from transient state to sink.
-rstar :: L 2 1
-rstar = inv (eye - fancyR1dot) <> w
+-- Transient reliability matrix.
+tr :: L 2 1
+tr = transientReliability q Nothing (successes, failures)
 
-unit_expectRstar :: Assertion
-unit_expectRstar = unwrap rstar @?= unwrap expected
+unit_expectTransientReliability :: Assertion
+unit_expectTransientReliability =
+  (norm_2 (tr - expected)) <= 1.0e-10 @? "differs from expected"
   where
-    a = 0.3/2
-    b = 0.2*0.6/4
-    c = 0.6/2
-    d = 1 - 0.5/2
+    a = (4/6)/2
+    b = (3/4)*(7/8)/4
+    c = (7/8)/2
+    d = 1 - (6/8)/2
 
     expected :: L 2 1
     expected = matrix
@@ -77,8 +65,9 @@ unit_expectRstar = unwrap rstar @?= unwrap expected
       , c/d
       ]
 
-sur :: Double
-sur = fst $ headTail (uncol rstar)
+-- Single use reliability mean.
+sur :: ℝ
+sur = singleUseReliability q Nothing (successes, failures)
 
 ------------------------------------------------------------------------
 
