@@ -29,9 +29,6 @@ fundamental q = inv (eye - q)
 variance :: KnownNat n => Sq n -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
 
-pi :: KnownNat n => Sq n -> Sq n -> R n
-pi _p _n = undefined
-
 ------------------------------------------------------------------------
 
 onFundamental
@@ -47,6 +44,23 @@ occurrenceMean, occurrenceVar
   => Sq n -> R n
 occurrenceMean = (id `onFundamental`)
 occurrenceVar  = (variance `onFundamental`)
+
+pi
+  :: forall n
+   . (KnownNat n)
+  => KnownNat (n - 1)
+  => KnownNat (n - (n - 1))
+  => 1 <= n - 1
+  => n - 1 <= n
+  => ((n - 1) + 1) ~ n
+  => Sq n -> R n
+pi p = n1 / linspace (l, l)
+  where
+    n1 :: R n
+    n1 = occurrenceMean (reduced p) & 1
+
+    l :: ℝ
+    l  = takeDiag eye <.> n1
 
 ------------------------------------------------------------------------
 

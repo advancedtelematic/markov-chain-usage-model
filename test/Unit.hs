@@ -4,6 +4,8 @@ module Unit where
 
 import           Numeric.LinearAlgebra.Static
                    (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
+import           Prelude                      hiding
+                   (pi)
 import           Test.Tasty.HUnit
                    (Assertion, (@?), (@?=))
 
@@ -108,9 +110,10 @@ s = matrix
 {- C -}  , 0.25, 0,   0,    0.5,  0.25
          ]
 
+-- State occurences.
 unit_occurenceMean :: Assertion
 unit_occurenceMean =
-  (norm_2 ((occurrenceMean q') - expected)) <= 1.0e-3 @? "differs from expected"
+  norm_2 (occurrenceMean q' - expected) <= 1.0e-3 @? "differs from expected"
   where
     expected :: R 4
     expected = vector
@@ -118,8 +121,17 @@ unit_occurenceMean =
 
 unit_occurenceVar :: Assertion
 unit_occurenceVar =
-  (norm_2 ((occurrenceVar q') - expected)) <= 1.0e-3 @? "differs from expected"
+  norm_2 (occurrenceVar q' - expected) <= 1.0e-3 @? "differs from expected"
   where
     expected :: R 4
     expected = vector
       [ 0, 0.284, 2.556, 0.497 ]
+
+-- Long-run occupancies.
+unit_longRunOccupancies :: Assertion
+unit_longRunOccupancies =
+  norm_2 (pi p - expected) <= 1.0e-3 @? "differs from expected"
+  where
+    expected :: R 5
+    expected = vector
+      [ 0.1857, 0.2286, 0.2286, 0.1714, 0.1857 ]
