@@ -16,14 +16,37 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
+reduced :: (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
+        => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
+        => m - p <= m
+        => n - q <= n
+        => L m n -> L (m - p) (n - q)
+reduced = fst . splitCols . fst . splitRows
+
 fundamental :: KnownNat n => Sq n -> Sq n
 fundamental q = inv (eye - q)
 
 variance :: KnownNat n => Sq n -> Sq n
-variance n = n <> (2 <> diag (takeDiag n) - eye) - (n * n)
+variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
 
 pi :: KnownNat n => Sq n -> Sq n -> R n
-pi p n = undefined
+pi _p _n = undefined
+
+------------------------------------------------------------------------
+
+onFundamental
+  :: KnownNat n
+  => 1 <= n
+  => (Sq n -> Sq n) -> Sq n
+  -> R n
+onFundamental f = unrow . fst . splitRows . f . fundamental
+
+occurrenceMean, occurrenceVar
+  :: KnownNat n
+  => 1 <= n
+  => Sq n -> R n
+occurrenceMean = (id `onFundamental`)
+occurrenceVar  = (variance `onFundamental`)
 
 ------------------------------------------------------------------------
 
@@ -65,7 +88,7 @@ transientReliability q mprior obs = rstar
     (fancyRdot, w) = splitCols fancyR
 
     rstar :: L (n - 1) 1
-    rstar = inv (eye - fancyRdot) <> w
+    rstar = fundamental fancyRdot <> w
 
 singleUseReliability
   :: (KnownNat (n - 1), KnownNat n)
