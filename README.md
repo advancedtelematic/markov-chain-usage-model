@@ -22,7 +22,11 @@ for BLAS/LAPACK and GSL to be
   * [A Simpler and More Direct Derivation of System Reliability Using Markov
     Chain Usage
     Models](https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_91.pdf)
-    (2017) by Lan Lin, Yufeng Xue and Fengguang Song.
+    (2017) by L. Lin, Y. Xue and F. Song;
+
+  * [Stopping criteria for statistical
+    testing](https://www.sciencedirect.com/science/article/abs/pii/S0950584900001105)
+    (2000) by K. Sayre and J. H. Poore.
 
 ### See also
 
