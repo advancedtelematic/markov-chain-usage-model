@@ -8,20 +8,23 @@
 module MarkovChain where
 
 import           Data.Maybe
-                   (fromMaybe)
+                   (fromJust, fromMaybe)
 import           GHC.TypeLits
+import qualified Numeric.LinearAlgebra.Data   as D
 import           Numeric.LinearAlgebra.Static
 import           Prelude                      hiding
-                   ((<>))
+                   (pi, (<>))
 
 ------------------------------------------------------------------------
 
-reduced :: (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
-        => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
-        => m - p <= m
-        => n - q <= n
-        => L m n -> L (m - p) (n - q)
-reduced = fst . splitCols . fst . splitRows
+reduced
+  :: (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
+  => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
+  => m - p <= m
+  => n - q <= n
+  => L m n -> L (m - p) (n - q)
+reduced
+  = fst . splitCols . fst . splitRows
 
 fundamental :: KnownNat n => Sq n -> Sq n
 fundamental q = inv (eye - q)
@@ -61,6 +64,12 @@ pi p = n1 / linspace (l, l)
 
     l :: ℝ
     l  = takeDiag eye <.> n1
+
+------------------------------------------------------------------------
+
+unsafeTransform
+  :: (Sized t2 a d2, Sized t1 b d1) => (d2 t2 -> d1 t1) -> a -> b
+unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
 
@@ -116,3 +125,46 @@ singleUseReliability
   -> ℝ
 singleUseReliability q mprior obs =
   fst $ headTail $ uncol $ transientReliability q mprior obs
+
+------------------------------------------------------------------------
+
+kullbackLeibler
+  :: forall m n
+   . (KnownNat m, KnownNat n)
+  => (KnownNat (n - 1), KnownNat (n - (n - 1)))
+  => (n - 1) <= n
+  => (m <= n)
+  => (1 <= (n - 1))
+  => ((n - 1) + 1) ~ n
+  => Sq n -> L m n -> R n -> L m n -> ℝ
+kullbackLeibler p s es et = k' <.> linspace (1, 1)
+  where
+    pi' :: R m
+    pi' = fst $ split (pi p)
+
+    es' :: R m
+    es' = fst (split es)
+
+    m :: Int
+    m = size es
+
+    es'' :: L m n
+    es'' = unsafeTransform (\mat -> D.repmat mat 1 m) (col es')
+
+    t :: L m n
+    t = es'' / et
+
+    k :: R m
+    k  = vector $ map sum' $ toRows $ s * dmmap log' (s * t) / log 2
+
+    k' :: R m
+    k' = pi' * k
+
+    log' :: ℝ -> ℝ
+    log' x
+      | x == 0    = 0
+      | isNaN x   = 0
+      | otherwise = log x
+
+    sum' :: R n -> ℝ
+    sum' = (<.> linspace (1, 1))
