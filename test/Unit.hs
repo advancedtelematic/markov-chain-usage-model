@@ -1,11 +1,15 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds  #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Unit where
 
+import qualified Numeric.LinearAlgebra.Data   as D
+import           Numeric.LinearAlgebra.Static hiding
+                   (tr)
 import           Numeric.LinearAlgebra.Static
                    (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
 import           Prelude                      hiding
-                   (pi)
+                   (pi, (<>))
 import           Test.Tasty.HUnit
                    (Assertion, (@?), (@?=))
 
@@ -54,7 +58,7 @@ tr = transientReliability q Nothing (successes, failures)
 
 unit_expectTransientReliability :: Assertion
 unit_expectTransientReliability =
-  (norm_2 (tr - expected)) <= 1.0e-3 @? "differs from expected"
+  (norm_2 (tr - expected)) <= 1.0e-6 @? "differs from expected"
   where
     a = (4/6)/2
     b = (3/4)*(7/8)/4
@@ -130,8 +134,28 @@ unit_occurenceVar =
 -- Long-run occupancies.
 unit_longRunOccupancies :: Assertion
 unit_longRunOccupancies =
-  norm_2 (pi p - expected) <= 1.0e-3 @? "differs from expected"
+  norm_2 (pi p - expected) <= 1.0e-4 @? "differs from expected"
   where
     expected :: R 5
     expected = vector
       [ 0.1857, 0.2286, 0.2286, 0.1714, 0.1857 ]
+
+-- Stimulus execution.
+et :: L 4 5
+et = matrix
+  [ 4, 0, 0, 0, 0
+  , 0, 3, 2, 0, 0
+  , 0, 4, 1, 2, 0
+  , 1, 0, 0, 1, 1
+  ]
+
+-- Vector of state visitations.
+es :: R 5
+es = vector [4, 5, 7, 3, 4]
+
+unit_kullbackLeibler :: Assertion
+unit_kullbackLeibler =
+  kullbackLeibler p s es et - expected <= 1.0e-6 @? "differs from expected"
+  where
+    expected :: ℝ
+    expected = 0.03441
