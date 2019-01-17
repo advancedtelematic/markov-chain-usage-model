@@ -91,7 +91,7 @@ p = matrix
   ]
 
 q' :: Sq 4
-q' = reduced p
+q' = reduceCol $ reduceRow p
 
 unit_reducedQ :: Assertion
 unit_reducedQ = unwrap q' @?= unwrap expected
