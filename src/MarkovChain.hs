@@ -7,6 +7,8 @@
 
 module MarkovChain where
 
+import           Control.Monad (liftM2, join)
+import           Control.Applicative (liftA2)
 import           Data.Maybe
                    (fromJust, fromMaybe)
 import           GHC.TypeLits
@@ -124,12 +126,59 @@ singleUseReliability
   => 1 <= (n - 1)
   => (n - (n - 1)) ~ 1
   => (n - 1) <= n
+
   => L (n - 1) n
   -> Maybe (L (n - 1) n, L (n - 1) n)
   -> (L (n - 1) n, L (n - 1) n)
-  -> ℝ
+  -> Double
 singleUseReliability q mprior obs =
   fst $ headTail $ uncol $ transientReliability q mprior obs
+
+singleUseReliabilityIO :: (KnownNat n, KnownNat (n - 1), KnownNat ((n - 1 - (n - 1))))
+  => (1 <= n - 1, n - 1 <= n, (n - (n - 1)) ~ 1)
+
+  => L (n - 1) n                -- ^ Transition matrix without transitions to
+                                -- the sink.
+
+  -> FilePath                   -- ^ Filepath where prior successes are/will be
+                                -- saved.
+
+  -> FilePath                   -- ^ Filepath where prior failures are/will be
+                                -- saved.
+
+  -> (L (n - 1) n, L (n - 1) n) -- ^ Observed successes and failures.
+  -> IO Double
+singleUseReliabilityIO q fps fpf (s, f) = do
+  mprior <- load2StaticMatrix fps fpf
+  case mprior of
+    Nothing -> do
+      -- We need the elementwise @max 1@ below because otherwise we get division
+      -- by zero in 'successRate'. For details see the 2017 paper by by L. Lin,
+      -- Y. Xue and F. Song in the README.
+      saveStaticMatrix fps "%.1f" (dmmap (max 1) s)
+      saveStaticMatrix fpf "%.1f" (dmmap (max 1) f)
+    Just (ps, pf) -> do
+      saveStaticMatrix fps "%.1f" (ps + s)
+      saveStaticMatrix fpf "%.1f" (pf + f)
+  return (singleUseReliability q mprior (s, f))
+
+------------------------------------------------------------------------
+
+loadStaticMatrix :: (KnownNat m, KnownNat n) => FilePath -> IO (Maybe (L m n))
+loadStaticMatrix = fmap (join . fmap create) . D.loadMatrix'
+
+load2StaticMatrix :: (KnownNat m, KnownNat n, KnownNat o, KnownNat p)
+                  => FilePath -> FilePath -> IO (Maybe (L m n, L o p))
+load2StaticMatrix fp1 fp2 = liftMA2 (loadStaticMatrix fp1) (loadStaticMatrix fp2)
+  where
+    liftMA2 :: (Monad m, Applicative f) => m (f a) -> m (f b) -> m (f (a, b))
+    liftMA2 = liftM2 (liftA2 (,))
+
+saveStaticMatrix :: (KnownNat m, KnownNat n)
+                 => FilePath
+                 -> String   -- ^ "printf" format (e.g. "%.2f", "%g", etc.)
+                 -> L m n -> IO ()
+saveStaticMatrix fp format = D.saveMatrix fp format . unwrap
 
 ------------------------------------------------------------------------
 
