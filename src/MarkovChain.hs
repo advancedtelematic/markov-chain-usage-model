@@ -17,22 +17,33 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
-reduced
-  :: (KnownNat m, KnownNat (m - p), KnownNat (m - (m - p)))
-  => (KnownNat n, KnownNat (n - q), KnownNat (n - (n - q)))
-  => m - p <= m
-  => n - q <= n
-  => L m n -> L (m - p) (n - q)
-reduced
-  = fst . splitCols . fst . splitRows
+reduceRow
+  :: forall m n
+  .  (KnownNat m, KnownNat (m - 1), KnownNat (m - (m - 1)))
+  => KnownNat n
+  => m - 1 <= m
+  => L m n -> L (m - 1) n
+reduceRow = fst . splitRows
+
+reduceCol
+  :: forall m n p
+  .  KnownNat m
+  => (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
+  => n - 1 <= n
+  => L m n -> L m (n - 1)
+reduceCol = fst . splitCols
+
+unsafeTransform
+  :: (Sized t2 a d2, Sized t1 b d1) => (d2 t2 -> d1 t1) -> a -> b
+unsafeTransform f = fromJust . create . f . unwrap
+
+------------------------------------------------------------------------
 
 fundamental :: KnownNat n => Sq n -> Sq n
 fundamental q = inv (eye - q)
 
 variance :: KnownNat n => Sq n -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
-
-------------------------------------------------------------------------
 
 onFundamental
   :: KnownNat n
@@ -60,16 +71,10 @@ pi
 pi p = n1 / linspace (l, l)
   where
     n1 :: R n
-    n1 = occurrenceMean (reduced p) & 1
+    n1 = occurrenceMean (reduceCol $ reduceRow p) & 1
 
     l :: ℝ
     l  = takeDiag eye <.> n1
-
-------------------------------------------------------------------------
-
-unsafeTransform
-  :: (Sized t2 a d2, Sized t1 b d1) => (d2 t2 -> d1 t1) -> a -> b
-unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
 
