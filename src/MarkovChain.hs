@@ -19,6 +19,27 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
+-- $setup
+-- >>> :set -XDataKinds
+-- >>> :{
+-- let
+--   p :: Sq 5
+--   p = matrix
+--     [ 0, 1,    0,   0,    0
+--     , 0, 0,    0.5, 0.5,  0
+--     , 0, 0,    0.5, 0.25, 0.25
+--     , 0, 0.25, 0,   0,    0.75
+--     , 1, 0,    0,   0,    0
+--     ]
+-- :}
+
+-- |
+-- >>> reduceRow p :: L 4 5
+-- (matrix
+--  [ 0.0,  1.0, 0.0,  0.0,  0.0
+--  , 0.0,  0.0, 0.5,  0.5,  0.0
+--  , 0.0,  0.0, 0.5, 0.25, 0.25
+--  , 0.0, 0.25, 0.0,  0.0, 0.75 ] :: L 4 5)
 reduceRow
   :: forall m n
   .  (KnownNat m, KnownNat (m - 1), KnownNat (m - (m - 1)))
@@ -27,6 +48,14 @@ reduceRow
   => L m n -> L (m - 1) n
 reduceRow = fst . splitRows
 
+-- |
+-- >>> reduceCol p :: L 5 4
+-- (matrix
+--  [ 0.0,  1.0, 0.0,  0.0
+--  , 0.0,  0.0, 0.5,  0.5
+--  , 0.0,  0.0, 0.5, 0.25
+--  , 0.0, 0.25, 0.0,  0.0
+--  , 1.0,  0.0, 0.0,  0.0 ] :: L 5 4)
 reduceCol
   :: forall m n p
   .  KnownNat m
@@ -41,11 +70,24 @@ unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
 
-fundamental :: KnownNat n => Sq n -> Sq n
+fundamental :: KnownNat n => Sq n -- ^ Reduced matrix.
+            -> Sq n
 fundamental q = inv (eye - q)
 
 variance :: KnownNat n => Sq n -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
+
+-- |
+-- >>> expectedLength (fundamental (reduceCol (reduceRow p) :: Sq 4))
+-- 4.384615384615385
+expectedLength :: KnownNat n => Sq n -- ^ Fundamental matrix.
+               -> Double
+expectedLength n = sumV (toRows n !! 0)
+  where
+    sumV :: KnownNat n => R n -> Double
+    sumV v = v <.> 1
+
+------------------------------------------------------------------------
 
 onFundamental
   :: KnownNat n

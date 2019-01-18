@@ -63,6 +63,7 @@ test-suite markov-chain-usage-model-test
       -Wno-monomorphism-restriction
   build-depends:
       base >=4.7 && <5
+    , doctest
     , hmatrix
     , tasty
     , tasty-discover

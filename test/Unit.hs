@@ -10,6 +10,8 @@ import           Numeric.LinearAlgebra.Static
                    (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
 import           Prelude                      hiding
                    (pi, (<>))
+import           Test.DocTest
+                   (doctest)
 import           Test.Tasty.HUnit
                    (Assertion, (@?), (@?=))
 
@@ -159,3 +161,6 @@ unit_kullbackLeibler =
   where
     expected :: ℝ
     expected = 0.03441
+
+unit_docTest :: IO ()
+unit_docTest = doctest ["src/MarkovChain.hs"]
