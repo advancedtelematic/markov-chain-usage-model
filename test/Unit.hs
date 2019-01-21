@@ -3,9 +3,8 @@
 
 module Unit where
 
-import qualified Numeric.LinearAlgebra.Data   as D
-import           Numeric.LinearAlgebra.Static hiding
-                   (tr)
+import           Data.Proxy
+                   (Proxy(Proxy))
 import           Numeric.LinearAlgebra.Static
                    (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
 import           Prelude                      hiding
@@ -75,7 +74,7 @@ unit_expectTransientReliability =
 
 -- Single use reliability mean.
 sur :: ℝ
-sur = singleUseReliability q Nothing (successes, failures)
+sur = singleUseReliability Proxy q Nothing (successes, failures)
 
 ------------------------------------------------------------------------
 
@@ -94,17 +93,6 @@ p = matrix
 
 q' :: Sq 4
 q' = reduceCol $ reduceRow p
-
-unit_reducedQ :: Assertion
-unit_reducedQ = unwrap q' @?= unwrap expected
-  where
-    expected :: Sq 4
-    expected = matrix
-      [ 0, 1,    0,   0
-      , 0, 0,    0.5, 0.5
-      , 0, 0,    0.5, 0.25
-      , 0, 0.25, 0,   0
-      ]
 
 -- Stimulus matrix.
 s :: L 4 5
