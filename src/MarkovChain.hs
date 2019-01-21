@@ -191,7 +191,7 @@ singleUseReliabilityIO :: (KnownNat n, KnownNat (n - 1), KnownNat ((n - 1 - (n -
   -> (L (n - 1) n, L (n - 1) n) -- ^ Observed successes and failures.
   -> IO Double
 singleUseReliabilityIO q fps fpf (s, f) = do
-  mprior <- load2StaticMatrix fps fpf
+  mprior <- load2StaticMatrices fps fpf
   case mprior of
     Nothing -> do
       -- We need the elementwise @max 1@ below because otherwise we get division
@@ -206,12 +206,12 @@ singleUseReliabilityIO q fps fpf (s, f) = do
 
 ------------------------------------------------------------------------
 
-loadStaticMatrix :: (KnownNat m, KnownNat n) => FilePath -> IO (Maybe (L m n))
-loadStaticMatrix = fmap (join . fmap create) . D.loadMatrix'
+loadStaticMatrices :: (KnownNat m, KnownNat n) => FilePath -> IO (Maybe (L m n))
+loadStaticMatrices = fmap (join . fmap create) . D.loadMatrix'
 
-load2StaticMatrix :: (KnownNat m, KnownNat n, KnownNat o, KnownNat p)
-                  => FilePath -> FilePath -> IO (Maybe (L m n, L o p))
-load2StaticMatrix fp1 fp2 = liftMA2 (loadStaticMatrix fp1) (loadStaticMatrix fp2)
+load2StaticMatrices :: (KnownNat m, KnownNat n, KnownNat o, KnownNat p)
+                    => FilePath -> FilePath -> IO (Maybe (L m n, L o p))
+load2StaticMatrices fp1 fp2 = liftMA2 (loadStaticMatrix fp1) (loadStaticMatrix fp2)
   where
     liftMA2 :: (Monad m, Applicative f) => m (f a) -> m (f b) -> m (f (a, b))
     liftMA2 = liftM2 (liftA2 (,))
