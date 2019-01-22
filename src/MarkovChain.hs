@@ -94,7 +94,18 @@ unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
 
-fundamental :: KnownNat n => Sq n -- ^ Reduced matrix.
+-- | The fundamental matrix for absorbing chains. Its (i, j)-th entry is
+-- the expected number of occurrences of state j prior to absorption at
+-- the sink, given that one starts in state i.
+--
+-- >>> fundamental (reduceCol (reduceRow p) :: Sq 4)
+-- (matrix
+--  [ 1.0,  1.2307692307692306, 1.2307692307692308, 0.9230769230769231
+--  , 0.0,  1.2307692307692306, 1.2307692307692308, 0.9230769230769231
+--  , 0.0, 0.15384615384615385, 2.1538461538461537, 0.6153846153846154
+--  , 0.0,  0.3076923076923077, 0.3076923076923077, 1.2307692307692308 ] :: L 4 4)
+fundamental :: KnownNat n
+            => Sq n -- ^ Reduced matrix.
             -> Sq n
 fundamental q = inv (eye - q)
 
@@ -137,6 +148,17 @@ pi p = n1 / linspace (l, l)
 
 ------------------------------------------------------------------------
 
+-- |
+--
+-- >>> successRate Nothing (matrix [10,10,10,10] :: Sq 2, matrix [0,1,2,3])
+-- (matrix
+--  [ 0.9166666666666666, 0.8461538461538461
+--  , 0.7857142857142857, 0.7333333333333333 ] :: L 2 2)
+--
+-- >>> successRate (Just (matrix [10,10,10,10] :: Sq 2, matrix [1,1,1,1])) (matrix [10,10,10,10], matrix [0,1,2,3])
+-- (matrix
+--  [ 0.9523809523809523, 0.9090909090909091
+--  , 0.8695652173913043, 0.8333333333333334 ] :: L 2 2)
 successRate
   :: forall m n
    . (KnownNat m, KnownNat n)
@@ -168,7 +190,7 @@ transientReliability q mprior obs = rstar
     fancyR = q * r
 
     fancyRdot :: L (n - 1) (n - 1)
-    w :: L (n - 1) 1
+    w         :: L (n - 1) 1
     (fancyRdot, w) = splitCols fancyR
 
     rstar :: L (n - 1) 1
