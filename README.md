@@ -24,6 +24,11 @@ for BLAS/LAPACK and GSL to be
     Models](https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_91.pdf)
     (2017) by L. Lin, Y. Xue and F. Song;
 
+  * [On A Simpler and Faster Derivation of Single Use Reliability Mean and
+    Variance for Model-Based Statistical
+    Testing](http://ksiresearchorg.ipage.com/seke/seke18paper/seke18paper_26.pdf)
+    (2018) by Y. Xue, L. Lin, X. Sun and F. Song;
+
   * [Stopping criteria for statistical
     testing](https://www.sciencedirect.com/science/article/abs/pii/S0950584900001105)
     (2000) by K. Sayre and J. H. Poore.
