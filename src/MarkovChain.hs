@@ -34,8 +34,6 @@ import           Control.Monad
                    (join, liftM2)
 import           Data.Maybe
                    (fromJust, fromMaybe)
-import           Data.Proxy
-                   (Proxy)
 import           GHC.TypeLits
                    (type (+), type (-), type (<=), KnownNat)
 import qualified Numeric.LinearAlgebra.Data   as D
@@ -112,7 +110,8 @@ fundamental q = inv (eye - q)
 variance :: KnownNat n => Sq n -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
 
--- |
+-- | Expected test case length.
+--
 -- >>> expectedLength (fundamental (reduceCol (reduceRow p) :: Sq 4))
 -- 4.384615384615385
 expectedLength :: KnownNat n => Sq n -- ^ Fundamental matrix.
@@ -155,7 +154,10 @@ pi p = n1 / linspace (l, l)
 --  [ 0.9166666666666666, 0.8461538461538461
 --  , 0.7857142857142857, 0.7333333333333333 ] :: L 2 2)
 --
--- >>> successRate (Just (matrix [10,10,10,10] :: Sq 2, matrix [1,1,1,1])) (matrix [10,10,10,10], matrix [0,1,2,3])
+-- >>> :{
+--   successRate (Just (matrix [10,10,10,10] :: Sq 2, matrix [1,1,1,1]))
+--               (matrix [10,10,10,10], matrix [0,1,2,3])
+-- :}
 -- (matrix
 --  [ 0.9523809523809523, 0.9090909090909091
 --  , 0.8695652173913043, 0.8333333333333334 ] :: L 2 2)
@@ -198,20 +200,18 @@ transientReliability q mprior obs = rstar
 
 singleUseReliability :: (KnownNat (n - 1), KnownNat n)
   => (1 <= (n - 1), (n - (n - 1)) ~ 1, (n - 1) <= n)
-  => Proxy n
 
-  -> L (n - 1) n                       -- ^ Reduced transition matrix.
+  => L (n - 1) n                       -- ^ Reduced transition matrix.
   -> Maybe (L (n - 1) n, L (n - 1) n)  -- ^ Prior successes and failures.
   -> (L (n - 1) n, L (n - 1) n)        -- ^ Observed successes and failures
   -> Double
-singleUseReliability _proxy q mprior obs =
+singleUseReliability q mprior obs =
   fst $ headTail $ uncol $ transientReliability q mprior obs
 
 singleUseReliabilityIO :: (KnownNat n, KnownNat (n - 1))
   => (1 <= n - 1, n - 1 <= n, (n - (n - 1)) ~ 1)
-  => Proxy n
 
-  -> L (n - 1) n                -- ^ Transition matrix without transitions to
+  => L (n - 1) n                -- ^ Transition matrix without transitions to
                                 -- the sink.
 
   -> FilePath                   -- ^ Filepath where prior successes are/will be
@@ -222,7 +222,7 @@ singleUseReliabilityIO :: (KnownNat n, KnownNat (n - 1))
 
   -> (L (n - 1) n, L (n - 1) n) -- ^ Observed successes and failures.
   -> IO Double
-singleUseReliabilityIO proxy q fps fpf (s, f) = do
+singleUseReliabilityIO q fps fpf (s, f) = do
   mprior <- load2StaticMatrices fps fpf
   case mprior of
     Nothing -> do
@@ -234,7 +234,7 @@ singleUseReliabilityIO proxy q fps fpf (s, f) = do
     Just (ps, pf) -> do
       saveStaticMatrix fps "%.1f" (ps + s)
       saveStaticMatrix fpf "%.1f" (pf + f)
-  return (singleUseReliability proxy q mprior (s, f))
+  return (singleUseReliability q mprior (s, f))
 
 ------------------------------------------------------------------------
 

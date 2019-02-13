@@ -3,8 +3,6 @@
 
 module Unit where
 
-import           Data.Proxy
-                   (Proxy(Proxy))
 import           Numeric.LinearAlgebra.Static
                    (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
 import           Prelude                      hiding
@@ -74,7 +72,7 @@ unit_expectTransientReliability =
 
 -- Single use reliability mean.
 sur :: ℝ
-sur = singleUseReliability Proxy q Nothing (successes, failures)
+sur = singleUseReliability q Nothing (successes, failures)
 
 ------------------------------------------------------------------------
 
