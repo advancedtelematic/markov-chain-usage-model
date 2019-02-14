@@ -45,19 +45,20 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
--- $setup
--- >>> :set -XDataKinds
--- >>> :{
--- let
---   p :: Sq 5
---   p = matrix
---     [ 0, 1,    0,   0,    0
---     , 0, 0,    0.5, 0.5,  0
---     , 0, 0,    0.5, 0.25, 0.25
---     , 0, 0.25, 0,   0,    0.75
---     , 1, 0,    0,   0,    0
---     ]
--- :}
+{- $setup
+   >>> :set -XDataKinds
+   >>> :{
+   let
+     p :: Sq 5
+     p = matrix
+       [ 0, 1,    0,   0,    0
+       , 0, 0,    0.5, 0.5,  0
+       , 0, 0,    0.5, 0.25, 0.25
+       , 0, 0.25, 0,   0,    0.75
+       , 1, 0,    0,   0,    0
+       ]
+:}
+-}
 
 -- |
 -- >>> reduceRow p :: L 4 5
@@ -150,9 +151,17 @@ occurrenceMean, occurrenceVar :: (KnownNat n, 1 <= n)
 occurrenceMean = (id `onFundamental`)
 occurrenceVar  = (variance `onFundamental`)
 
+-- | The Perron eigenvector (long-run occupancies/probabilities of states).
+--
+-- >>> unwrap (pi p)
+-- [0.1857142857142857,0.22857142857142854,0.22857142857142856,0.17142857142857143,0.1857142857142857]
+--
+-- __note__: The use of 'unwrap' is needed because hmatrix's pretty printing of
+-- vectors seems broken.
 pi :: forall n. (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
    => (1 <= n - 1, n - 1 <= n, ((n - 1) + 1) ~ n)
-   => Sq n -> R n
+   => Sq n -- ^ Transition matrix.
+   -> R n
 pi p = n1 / linspace (l, l)
   where
     n1 :: R n
