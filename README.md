@@ -11,13 +11,29 @@ for BLAS/LAPACK and GSL to be
 
 ### References
 
+  * [Engineering software under statistical quality
+    control](https://doi.org/10.1109/52.60601) (1990) by R. H. Cobb and H. D.
+    Mills;
+
+  * [A Markov chain model for statistical software
+    testing](https://doi.org/10.1109/32.328991) (1994) by J. A. Whittaker and M.
+    G. Thomason;
+
+  * [Statistical testing of software based on a usage
+    model](https://doi.org/10.1002/spe.4380250106) (1995) by G. H. Walton, J. H.
+    Poore and C. J. Trammell;
+
+  * [Quantifying the reliability of software: statistical testing based on a
+    usage model](https://doi.org/10.1109/SESS.1995.525966) (1995) by C.
+    Trammell;
+
   * [Computations for Markov Chain Usage
     Models](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.416.2257&rep=rep1&type=pdf)
     (2000) by S. J. Prowell;
 
   * [Computing system reliability using Markov chain usage
-    models](https://dl.acm.org/citation.cfm?id=1035099) (2004) by S. J. Prowell
-    and J. H. Poore;
+    models](https://doi.org/10.1016/S0164-1212(03)00241-3) (2004) by S. J.
+    Prowell and J. H. Poore;
 
   * [A Simpler and More Direct Derivation of System Reliability Using Markov
     Chain Usage
@@ -30,8 +46,8 @@ for BLAS/LAPACK and GSL to be
     (2018) by Y. Xue, L. Lin, X. Sun and F. Song;
 
   * [Stopping criteria for statistical
-    testing](https://www.sciencedirect.com/science/article/abs/pii/S0950584900001105)
-    (2000) by K. Sayre and J. H. Poore.
+    testing](https://doi.org/10.1016/S0950-5849(00)00110-5) (2000) by K. Sayre
+    and J. H. Poore.
 
 ### See also
 
