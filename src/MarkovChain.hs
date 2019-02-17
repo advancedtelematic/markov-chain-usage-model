@@ -9,14 +9,13 @@
 module MarkovChain
   ( reduceRow
   , reduceCol
+  , firstRow
   , unsafeTransform
   , fundamental
   , variance
   , expectedLength
-  , onFundamental
-  , occurrenceMean
-  , occurrenceVar
   , pi
+  , sigma
   , successRate
   , transientReliability
   , singleUseReliability
@@ -87,11 +86,19 @@ reduceCol :: forall m n. (KnownNat m, KnownNat n)
           -> L m (n - 1)
 reduceCol = fst . splitCols
 
+-- | First row of a matrix.
+--
+-- >>> unwrap (firstRow p)
+-- [0.0,1.0,0.0,0.0,0.0]
+firstRow :: (KnownNat n, 1 <= n) => Sq n -> R n
+firstRow = unrow . fst . splitRows
+
 unsafeTransform :: (Sized t2 a d2, Sized t1 b d1)
                 => (d2 t2 -> d1 t1) -> a -> b
 unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
+-- * Number of occurrences of a state in a test case
 
 -- | The fundamental matrix for absorbing chains. Its (i, j)-th entry is
 -- the expected number of occurrences of state j prior to absorption at
@@ -125,29 +132,8 @@ variance :: KnownNat n
          -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
 
--- | Expected test case length.
---
--- >>> expectedLength (fundamental (reduceCol (reduceRow p) :: Sq 4))
--- 4.384615384615385
-expectedLength :: KnownNat n => Sq n -- ^ Fundamental matrix.
-               -> Double
-expectedLength n = sumV (toRows n !! 0)
-  where
-    sumV :: KnownNat n => R n -> Double
-    sumV v = v <.> 1
-
 ------------------------------------------------------------------------
-
-onFundamental :: (KnownNat n, 1 <= n)
-              => (Sq n -> Sq n)
-              -> Sq n
-              -> R n
-onFundamental f = unrow . fst . splitRows . f . fundamental
-
-occurrenceMean, occurrenceVar :: (KnownNat n, 1 <= n)
-                              => Sq n -> R n
-occurrenceMean = (id `onFundamental`)
-occurrenceVar  = (variance `onFundamental`)
+-- * Computing the long-run state probabilities
 
 -- | The Perron eigenvector (long-run occupancies/probabilities of states).
 --
@@ -163,10 +149,60 @@ pi :: forall n. (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
 pi p = n1 / linspace (l, l)
   where
     n1 :: R n
-    n1 = occurrenceMean (reduceCol $ reduceRow p) & 1
+    n1 = firstRow (fundamental (reduceCol (reduceRow p))) & 1
 
     l :: ℝ
     l  = takeDiag eye <.> n1
+
+------------------------------------------------------------------------
+-- * Sensitivity analysis
+
+-- XXX: Algorithm on p. 31 in report.
+sensitivities :: KnownNat n => Sq n -> Sq n
+sensitivities = undefined
+
+------------------------------------------------------------------------
+-- * Other long run statistics
+
+-- | Compute the stimulus long-run occupancy.
+--
+{- | >>> :{
+let s :: L 4 5
+    s = matrix
+      [ 1,    0,    0,    0,    0
+      , 0,    0.5,  0.5,  0,    0
+      , 0,    0.5,  0.25, 0.25, 0
+      , 0.25, 0,    0,    0.5,  0.25
+      ]
+in unwrap (sigma s (pi p))
+:}
+[0.2807017543859649,0.2807017543859649,0.21052631578947367,0.17543859649122806,5.2631578947368425e-2]
+-}
+sigma :: forall n. (KnownNat n, KnownNat (n - 1))
+      => L (n - 1) n -- ^ Stimulus matrix.
+      -> R n         -- ^ Pi vector.
+      -> R n
+sigma stimulus perron = vector
+  [ 1 / (1 - perron `at` (n - 1))
+    * sum [ perron `at` i * stimulus `at` (i, k) | i <- [0 .. n - 2]]
+  | k <- [0 .. n - 1]
+  ]
+  where
+    n      = size perron
+    at x i = unwrap x `D.atIndex` i
+
+------------------------------------------------------------------------
+
+-- | Expected test case length.
+--
+-- >>> expectedLength (fundamental (reduceCol (reduceRow p) :: Sq 4))
+-- 4.384615384615385
+expectedLength :: KnownNat n => Sq n -- ^ Fundamental matrix.
+               -> Double
+expectedLength n = sumV (toRows n !! 0)
+  where
+    sumV :: KnownNat n => R n -> Double
+    sumV v = v <.> 1
 
 ------------------------------------------------------------------------
 

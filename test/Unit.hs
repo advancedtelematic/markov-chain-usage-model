@@ -105,7 +105,7 @@ s = matrix
 -- State occurences.
 unit_occurenceMean :: Assertion
 unit_occurenceMean =
-  norm_2 (occurrenceMean q' - expected) <= 1.0e-3 @? "differs from expected"
+  norm_2 (firstRow (fundamental q') - expected) <= 1.0e-3 @? "differs from expected"
   where
     expected :: R 4
     expected = vector
@@ -113,7 +113,7 @@ unit_occurenceMean =
 
 unit_occurenceVar :: Assertion
 unit_occurenceVar =
-  norm_2 (occurrenceVar q' - expected) <= 1.0e-3 @? "differs from expected"
+  norm_2 (firstRow (variance (fundamental q')) - expected) <= 1.0e-3 @? "differs from expected"
   where
     expected :: R 4
     expected = vector
