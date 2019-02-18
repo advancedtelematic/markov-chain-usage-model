@@ -11,9 +11,16 @@ for BLAS/LAPACK and GSL to be
 
 ### References
 
+  * [A theory of software reliability and its
+    application](http://doi.ieeecomputersociety.org/10.1109/TSE.1975.6312856)
+    (1975) by J. D. Musa;
+
   * [Engineering software under statistical quality
     control](https://doi.org/10.1109/52.60601) (1990) by R. H. Cobb and H. D.
     Mills;
+
+    [Operational profiles in software-reliability
+    engineering](https://doi.org/10.1109/52.199724) (1993) by J. D. Musa;
 
   * [A Markov chain model for statistical software
     testing](https://doi.org/10.1109/32.328991) (1994) by J. A. Whittaker and M.
@@ -34,6 +41,9 @@ for BLAS/LAPACK and GSL to be
   * [Computing system reliability using Markov chain usage
     models](https://doi.org/10.1016/S0164-1212(03)00241-3) (2004) by S. J.
     Prowell and J. H. Poore;
+
+  * Software Reliability Engineering: More Reliable Software Faster and Cheaper
+    (2004) by J. D. Musa;
 
   * [A Simpler and More Direct Derivation of System Reliability Using Markov
     Chain Usage
