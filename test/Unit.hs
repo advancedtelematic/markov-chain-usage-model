@@ -119,15 +119,6 @@ unit_occurenceVar =
     expected = vector
       [ 0, 0.284, 2.556, 0.497 ]
 
--- Long-run occupancies.
-unit_longRunOccupancies :: Assertion
-unit_longRunOccupancies =
-  norm_2 (pi p - expected) <= 1.0e-4 @? "differs from expected"
-  where
-    expected :: R 5
-    expected = vector
-      [ 0.1857, 0.2286, 0.2286, 0.1714, 0.1857 ]
-
 -- Stimulus execution.
 et :: L 4 5
 et = matrix

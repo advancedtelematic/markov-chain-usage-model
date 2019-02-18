@@ -43,19 +43,20 @@ import           Prelude                      hiding
 
 ------------------------------------------------------------------------
 
--- $setup
--- >>> :set -XDataKinds
--- >>> :{
--- let
---   p :: Sq 5
---   p = matrix
---     [ 0, 1,    0,   0,    0
---     , 0, 0,    0.5, 0.5,  0
---     , 0, 0,    0.5, 0.25, 0.25
---     , 0, 0.25, 0,   0,    0.75
---     , 1, 0,    0,   0,    0
---     ]
--- :}
+{- $setup
+   >>> :set -XDataKinds
+   >>> :{
+   let
+     p :: Sq 5
+     p = matrix
+       [ 0, 1,    0,   0,    0
+       , 0, 0,    0.5, 0.5,  0
+       , 0, 0,    0.5, 0.25, 0.25
+       , 0, 0.25, 0,   0,    0.75
+       , 1, 0,    0,   0,    0
+       ]
+:}
+-}
 
 -- |
 -- >>> reduceRow p :: L 4 5
@@ -94,7 +95,9 @@ unsafeTransform f = fromJust . create . f . unwrap
 
 -- | The fundamental matrix for absorbing chains. Its (i, j)-th entry is
 -- the expected number of occurrences of state j prior to absorption at
--- the sink, given that one starts in state i.
+-- the sink, given that one starts in state i. So the first row
+-- indicates the expected occurence of each state starting from the
+-- start state.
 --
 -- >>> fundamental (reduceCol (reduceRow p) :: Sq 4)
 -- (matrix
@@ -107,7 +110,19 @@ fundamental :: KnownNat n
             -> Sq n
 fundamental q = inv (eye - q)
 
-variance :: KnownNat n => Sq n -> Sq n
+-- | Expected variance of the occurrence for each state. The (i, j)-th
+-- entry should be read in the same away as that of the fundamental
+-- matrix above.
+--
+-- >>> variance (fundamental (reduceCol (reduceRow p) :: Sq 4))
+-- (matrix
+--  [ 0.0, 0.28402366863905315, 2.5562130177514795, 0.4970414201183433
+--  , 0.0, 0.28402366863905315, 2.5562130177514795, 0.4970414201183433
+--  , 0.0, 0.20118343195266267, 2.4852071005917153, 0.5207100591715977
+--  , 0.0,  0.3550295857988165, 0.9230769230769231, 0.2840236686390534 ] :: L 4 4)
+variance :: KnownNat n
+         => Sq n        -- ^ Reduced matrix.
+         -> Sq n
 variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
 
 -- | Expected test case length.
@@ -134,9 +149,17 @@ occurrenceMean, occurrenceVar :: (KnownNat n, 1 <= n)
 occurrenceMean = (id `onFundamental`)
 occurrenceVar  = (variance `onFundamental`)
 
+-- | The Perron eigenvector (long-run occupancies/probabilities of states).
+--
+-- >>> unwrap (pi p)
+-- [0.1857142857142857,0.22857142857142854,0.22857142857142856,0.17142857142857143,0.1857142857142857]
+--
+-- __note__: The use of 'unwrap' is needed because hmatrix's pretty printing of
+-- vectors seems broken.
 pi :: forall n. (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
    => (1 <= n - 1, n - 1 <= n, ((n - 1) + 1) ~ n)
-   => Sq n -> R n
+   => Sq n -- ^ Transition matrix.
+   -> R n
 pi p = n1 / linspace (l, l)
   where
     n1 :: R n
