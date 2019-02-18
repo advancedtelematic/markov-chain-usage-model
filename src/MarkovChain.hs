@@ -192,6 +192,24 @@ sigma stimulus perron = vector
     at x i = unwrap x `D.atIndex` i
 
 ------------------------------------------------------------------------
+-- * Probability of occurrence for states
+
+-- | Compute the probability of occurrence for each state.
+--
+-- >>> unwrap (firstRow (nodeProbabilityMatrix p))
+-- [1.0,1.0,0.571428571,0.75]
+nodeProbabilityMatrix :: (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
+                      => n - 1 <= n
+
+                      => Sq n -- ^ Transition matrix.
+                      -> Sq (n - 1)
+nodeProbabilityMatrix p = n <> (1 / (diag (takeDiag n)))
+  where
+    n = fundamental (reduceCol (reduceRow p))
+
+-- (Algorithm 9 on p. 34.)
+
+------------------------------------------------------------------------
 
 -- | Expected test case length.
 --
