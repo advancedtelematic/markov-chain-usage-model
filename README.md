@@ -19,7 +19,7 @@ for BLAS/LAPACK and GSL to be
     control](https://doi.org/10.1109/52.60601) (1990) by R. H. Cobb and H. D.
     Mills;
 
-    [Operational profiles in software-reliability
+  * [Operational profiles in software-reliability
     engineering](https://doi.org/10.1109/52.199724) (1993) by J. D. Musa;
 
   * [A Markov chain model for statistical software
