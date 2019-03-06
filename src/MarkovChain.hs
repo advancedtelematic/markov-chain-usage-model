@@ -1,54 +1,73 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE ExplicitNamespaces  #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
-
 module MarkovChain
-  ( reduceRow
-  , reduceCol
-  , firstRow
-  , unsafeTransform
+  ( M
+  , V
+  , (.*)
+  , (./)
+  , (.-)
+  , (^*)
+  , norm_1
+  , norm_F
   , fundamental
   , variance
-  , pi
+  , perron
   , sigma
-  , nodeProbabilityMatrix
+  , nodeProbabilities
   , expectedLength
   , successRate
   , transientReliability
   , singleUseReliability
-  , singleUseReliabilityIO
-  , loadStaticMatrix
-  , load2StaticMatrices
-  , saveStaticMatrix
+  -- , singleUseReliabilityIO
+  -- , loadStaticMatrix
+  -- , load2StaticMatrices
+  -- , saveStaticMatrix
   , kullbackLeibler
   )
   where
 
-import           Control.Applicative
-                   (liftA2)
-import           Control.Monad
-                   (join, liftM2)
+import qualified Data.List   as List
+import           Data.Matrix as Matrix
 import           Data.Maybe
-                   (fromJust, fromMaybe)
-import           GHC.TypeLits
-                   (type (+), type (-), type (<=), KnownNat)
-import qualified Numeric.LinearAlgebra.Data   as D
-import           Numeric.LinearAlgebra.Static
-import           Prelude                      hiding
-                   (pi, (<>))
+                   (fromMaybe)
+import           Data.Vector
+                   (Vector)
+import qualified Data.Vector as Vector
+import           Prelude     hiding
+                   (pi)
 
 ------------------------------------------------------------------------
 
+type M = Matrix Double
+type V = Vector Double
+
+-- point-wise
+(.*) :: M -> M -> M
+(.*) = elementwise (*)
+
+(./) :: M -> M -> M
+(./) = elementwise (/)
+
+(.-) :: M -> M -> M
+(.-) = elementwise (-)
+
+-- scalar
+(^/) :: Double -> M -> M
+(^/) x = fmap (x /)
+
+(^*) :: Double -> M -> M
+(^*) x = fmap (x *)
+
+norm_1 :: M -> Double
+norm_1 = sum . toList
+
+norm_F :: M -> Double
+norm_F = sqrt . sum . toList . fmap (^(2 :: Int))
+
 {- $setup
-   >>> :set -XDataKinds
+   >>> :set -XFlexibleContexts
    >>> :{
    let
-     p :: Sq 5
-     p = matrix
+     p :: M
+     p = fromList 5 5
        [ 0, 1,    0,   0,    0
        , 0, 0,    0.5, 0.5,  0
        , 0, 0,    0.5, 0.25, 0.25
@@ -57,46 +76,6 @@ import           Prelude                      hiding
        ]
 :}
 -}
-
--- |
--- >>> reduceRow p :: L 4 5
--- (matrix
---  [ 0.0,  1.0, 0.0,  0.0,  0.0
---  , 0.0,  0.0, 0.5,  0.5,  0.0
---  , 0.0,  0.0, 0.5, 0.25, 0.25
---  , 0.0, 0.25, 0.0,  0.0, 0.75 ] :: L 4 5)
-reduceRow :: forall m n. (KnownNat m, KnownNat (m - 1))
-          => (KnownNat n, m - 1 <= m)
-
-          => L m n        -- ^ Matrix to reduce.
-          -> L (m - 1) n
-reduceRow = fst . splitRows
-
--- |
--- >>> reduceCol p :: L 5 4
--- (matrix
---  [ 0.0,  1.0, 0.0,  0.0
---  , 0.0,  0.0, 0.5,  0.5
---  , 0.0,  0.0, 0.5, 0.25
---  , 0.0, 0.25, 0.0,  0.0
---  , 1.0,  0.0, 0.0,  0.0 ] :: L 5 4)
-reduceCol :: forall m n. (KnownNat m, KnownNat n)
-          => (KnownNat (n - 1), KnownNat (n - (n - 1)), n - 1 <= n)
-
-          => L m n        -- ^ Matrix to reduce.
-          -> L m (n - 1)
-reduceCol = fst . splitCols
-
--- | First row of a matrix.
---
--- >>> unwrap (firstRow p)
--- [0.0,1.0,0.0,0.0,0.0]
-firstRow :: (KnownNat n, 1 <= n) => Sq n -> R n
-firstRow = unrow . fst . splitRows
-
-unsafeTransform :: (Sized t2 a d2, Sized t1 b d1)
-                => (d2 t2 -> d1 t1) -> a -> b
-unsafeTransform f = fromJust . create . f . unwrap
 
 ------------------------------------------------------------------------
 -- * Number of occurrences of a state in a test case
@@ -107,185 +86,190 @@ unsafeTransform f = fromJust . create . f . unwrap
 -- indicates the expected occurence of each state starting from the
 -- start state.
 --
--- >>> fundamental (reduceCol (reduceRow p) :: Sq 4)
--- (matrix
---  [ 1.0,  1.2307692307692306, 1.2307692307692308, 0.9230769230769231
---  , 0.0,  1.2307692307692306, 1.2307692307692308, 0.9230769230769231
---  , 0.0, 0.15384615384615385, 2.1538461538461537, 0.6153846153846154
---  , 0.0,  0.3076923076923077, 0.3076923076923077, 1.2307692307692308 ] :: L 4 4)
-fundamental :: KnownNat n
-            => Sq n -- ^ Reduced matrix.
-            -> Sq n
-fundamental q = inv (eye - q)
+-- >>> fundamental (minorMatrix 5 5 p :: M)
+-- ┌                                                                                 ┐
+-- │                 1.0  1.2307692307692306  1.2307692307692308  0.9230769230769231 │
+-- │                 0.0  1.2307692307692306  1.2307692307692308  0.9230769230769231 │
+-- │                 0.0 0.15384615384615385  2.1538461538461537  0.6153846153846154 │
+-- │                 0.0  0.3076923076923077  0.3076923076923077  1.2307692307692308 │
+-- └                                                                                 ┘
+fundamental
+  :: M   -- ^ Reduced matrix (n x n).
+  -> M   -- ^ n x n
+fundamental q = case inverse (identity (nrows q) .- q) of
+  Left err -> error $ "fundamental: " ++ err
+  Right r  -> r
 
 -- | Expected variance of the occurrence for each state. The (i, j)-th
 -- entry should be read in the same away as that of the fundamental
 -- matrix above.
 --
--- >>> variance (fundamental (reduceCol (reduceRow p) :: Sq 4))
--- (matrix
---  [ 0.0, 0.28402366863905315, 2.5562130177514795, 0.4970414201183433
---  , 0.0, 0.28402366863905315, 2.5562130177514795, 0.4970414201183433
---  , 0.0, 0.20118343195266267, 2.4852071005917153, 0.5207100591715977
---  , 0.0,  0.3550295857988165, 0.9230769230769231, 0.2840236686390534 ] :: L 4 4)
-variance :: KnownNat n
-         => Sq n        -- ^ Reduced matrix.
-         -> Sq n
-variance n = n <> (2 * diag (takeDiag n) - eye) - (n * n)
+-- >>> variance (fundamental (minorMatrix 5 5 p :: M))
+-- ┌                                                                                 ┐
+-- │                 0.0 0.28402366863905315  2.5562130177514795  0.4970414201183433 │
+-- │                 0.0 0.28402366863905315  2.5562130177514795  0.4970414201183433 │
+-- │                 0.0 0.20118343195266267  2.4852071005917153  0.5207100591715977 │
+-- │                 0.0  0.3550295857988165  0.9230769230769231  0.2840236686390534 │
+-- └                                                                                 ┘
+variance
+  :: M -- ^ Reduced matrix (n x n).
+  -> M -- n x n
+variance n = n * (2 ^* diagonal 0 (getDiag n) - identity dim) - (n .* n)
+  where
+    dim = nrows n
 
 ------------------------------------------------------------------------
 -- * Computing the long-run state probabilities
 
 -- | The Perron eigenvector (long-run occupancies/probabilities of states).
 --
--- >>> unwrap (pi p)
+-- >>> perron p
 -- [0.1857142857142857,0.22857142857142854,0.22857142857142856,0.17142857142857143,0.1857142857142857]
---
--- __note__: The use of 'unwrap' is needed because hmatrix's pretty printing of
--- vectors seems broken.
-pi :: forall n. (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
-   => (1 <= n - 1, n - 1 <= n, ((n - 1) + 1) ~ n)
-   => Sq n -- ^ Transition matrix.
-   -> R n
-pi p = n1 / linspace (l, l)
+perron :: M -- ^ Transition matrix (n x n).
+       -> V
+perron p = Vector.map (/ l) n1
   where
-    n1 :: R n
-    n1 = firstRow (fundamental (reduceCol (reduceRow p))) & 1
+    dim = nrows p
 
-    l :: ℝ
-    l  = takeDiag eye <.> n1
+    n1 :: V
+    n1 = getRow 1 (fundamental (minorMatrix dim dim p)) `Vector.snoc` 1
+
+    l :: Double
+    l  = getElem 1 1 $ rowVector n1 * colVector (getDiag (identity dim))
 
 ------------------------------------------------------------------------
 -- * Sensitivity analysis
 
 -- XXX: Algorithm on p. 31 in report.
-_sensitivities :: Sq n -> Sq n
+_sensitivities :: M -> M
 _sensitivities = undefined
 
 ------------------------------------------------------------------------
 -- * Other long run statistics
 
 -- | Compute the stimulus long-run occupancy.
---
+
 {- | >>> :{
-let s :: L 4 5
-    s = matrix
+let s :: M
+    s = fromList 4 5
       [ 1,    0,    0,    0,    0
       , 0,    0.5,  0.5,  0,    0
       , 0,    0.5,  0.25, 0.25, 0
       , 0.25, 0,    0,    0.5,  0.25
       ]
-in unwrap (sigma s (pi p))
+in sigma s (perron p)
 :}
 [0.2807017543859649,0.2807017543859649,0.21052631578947367,0.17543859649122806,5.2631578947368425e-2]
 -}
-sigma :: forall n. (KnownNat n, KnownNat (n - 1))
-      => L (n - 1) n -- ^ Stimulus matrix.
-      -> R n         -- ^ Pi vector.
-      -> R n
-sigma stimulus perron = vector
-  [ 1 / (1 - perron `at` (n - 1))
-    * sum [ perron `at` i * stimulus `at` (i, k) | i <- [0 .. n - 2]]
-  | k <- [0 .. n - 1]
+sigma :: M -- ^ Stimulus matrix (n-1 x n).
+      -> V -- ^ Perron eigenvector.
+      -> V
+sigma stimulus pi = Vector.fromList
+  [ 1 / (1 - pi Vector.! (pred n))
+    * sum [ pi Vector.! (pred i) * getElem i k stimulus
+          | i <- [1 .. (pred n)]
+          ]
+  | k <- [1..n]
   ]
   where
-    n      = size perron
-    at x i = unwrap x `D.atIndex` i
+    n = Vector.length pi
 
-------------------------------------------------------------------------
--- * Probability of occurrence for states
+-- ------------------------------------------------------------------------
+-- -- * Probability of occurrence for states
 
 -- | Compute the probability of occurrence for each state.
 --
--- >>> unwrap (firstRow (nodeProbabilityMatrix p))
--- [1.0,1.0,0.571,0.75]
-nodeProbabilityMatrix :: (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
-                      => n - 1 <= n
-
-                      => Sq n -- ^ Transition matrix.
-                      -> Sq (n - 1)
-nodeProbabilityMatrix p = n <> (diag (takeDiag (1 / n)))
+-- >>> getRow 1 (nodeProbabilities p)
+-- [1.0,1.0,0.5714285714285715,0.75]
+nodeProbabilities
+  :: M -- ^ Transition matrix (n x n).
+  -> M -- n-1 x n-1
+nodeProbabilities p = n * (diagonal 0 (getDiag (1 ^/ n)))
   where
-    n = fundamental (reduceCol (reduceRow p))
+    n = fundamental (minorMatrix dim dim p)
+    dim = nrows p
 
 -- (Algorithm 9 on p. 34.)
 
-------------------------------------------------------------------------
+-- ------------------------------------------------------------------------
 
 -- | Expected test case length.
 --
--- >>> expectedLength (fundamental (reduceCol (reduceRow p) :: Sq 4))
+-- >>> expectedLength (fundamental (minorMatrix 5 5 p :: M))
 -- 4.384615384615385
-expectedLength :: KnownNat n => Sq n -- ^ Fundamental matrix.
-               -> Double
-expectedLength n = sumV (toRows n !! 0)
-  where
-    sumV :: KnownNat n => R n -> Double
-    sumV v = v <.> 1
+expectedLength
+  :: M -- ^ Fundamental matrix (n x n).
+  -> Double
+expectedLength = norm_1 . rowVector . (getRow 1)
 
-------------------------------------------------------------------------
+-- ------------------------------------------------------------------------
 
--- |
+-- | Success rate matrix.
 --
--- >>> successRate Nothing (matrix [10,10,10,10] :: Sq 2, matrix [0,1,2,3])
--- (matrix
---  [ 0.9166666666666666, 0.8461538461538461
---  , 0.7857142857142857, 0.7333333333333333 ] :: L 2 2)
---
+-- >>> successRate Nothing (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
+-- ┌                                       ┐
+-- │ 0.9166666666666666 0.8461538461538461 │
+-- │ 0.7857142857142857 0.7333333333333333 │
+-- └                                       ┘
 -- >>> :{
---   successRate (Just (matrix [10,10,10,10] :: Sq 2, matrix [1,1,1,1]))
---               (matrix [10,10,10,10], matrix [0,1,2,3])
+--  successRate
+--    (Just (fromList 2 2 [10,10,10,10], fromList 2 2 [1,1,1,1]))
+--    (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
 -- :}
--- (matrix
---  [ 0.9523809523809523, 0.9090909090909091
---  , 0.8695652173913043, 0.8333333333333334 ] :: L 2 2)
+-- ┌                                       ┐
+-- │ 0.9523809523809523 0.9090909090909091 │
+-- │ 0.8695652173913043 0.8333333333333334 │
+-- └                                       ┘
 successRate
-  :: forall m n
-   . (KnownNat m, KnownNat n)
-  => Maybe (L m n, L m n)
-  -> (L m n, L m n)
-  -> L m n
-successRate mprior (obsSuccs, obsFails) = succs / (succs + fails)
+  :: Maybe (M, M)
+  -> (M, M)
+  -> M
+successRate mprior (obsSuccs, obsFails) = succs ./ (succs + fails)
   where
-    priorSuccs, priorFails :: L m n
+    priorSuccs, priorFails :: M
     (priorSuccs, priorFails) =
-      fromMaybe (build (const . const 1), build (const . const 1)) mprior
+      fromMaybe ( matrix (nrows obsSuccs) (ncols obsSuccs) (const 1)
+                , matrix (nrows obsFails) (ncols obsFails) (const 1)) mprior
 
+    succs, fails :: M
     succs = priorSuccs + obsSuccs
     fails = priorFails + obsFails
 
-transientReliability :: forall n. (KnownNat (n - 1), KnownNat n)
-  => (((n - (n - 1)) ~ 1), (n - 1) <= n)
-
-  => L (n - 1) n                      -- ^ Reduced transition matrix.
-  -> Maybe (L (n - 1) n, L (n - 1) n) -- ^ Prior successes and failures.
-  -> (L (n - 1) n, L (n - 1) n)       -- ^ Observed successes and failures.
-  -> L (n - 1) 1
+transientReliability
+  :: M            -- ^ Reduced transition matrix (n-1 x n).
+  -> Maybe (M, M) -- ^ Prior successes and failures (n-1 x n).
+  -> (M, M)       -- ^ Observed successes and failures (n-1 x n).
+  -> M
 transientReliability q mprior obs = rstar
   where
-    r :: L (n - 1) n
+    n = ncols q
+
+    r :: M
     r = successRate mprior obs
 
-    fancyR :: L (n - 1) n
-    fancyR = q * r
+    fancyR :: M
+    fancyR = q .* r
 
-    fancyRdot :: L (n - 1) (n - 1)
-    w         :: L (n - 1) 1
-    (fancyRdot, w) = splitCols fancyR
+    fancyRdot :: M -- n-1 x n-1
+    fancyRdot = submatrix 1 (pred n) 1 (pred n) fancyR
 
-    rstar :: L (n - 1) 1
-    rstar = fundamental fancyRdot <> w
+    w :: M -- n-1 x 1
+    w = colVector $ getCol n fancyR
 
-singleUseReliability :: (KnownNat (n - 1), KnownNat n)
-  => (1 <= (n - 1), (n - (n - 1)) ~ 1, (n - 1) <= n)
+    rstar :: M -- n-1 x 1
+    rstar = fundamental fancyRdot * w
 
-  => L (n - 1) n                       -- ^ Reduced transition matrix.
-  -> Maybe (L (n - 1) n, L (n - 1) n)  -- ^ Prior successes and failures.
-  -> (L (n - 1) n, L (n - 1) n)        -- ^ Observed successes and failures
+singleUseReliability
+  :: M            -- ^ Reduced transition matrix (n-1 x n).
+  -> Maybe (M, M) -- ^ Prior successes and failures (n-1 x n).
+  -> (M, M)       -- ^ Observed successes and failures (n-1 x n).
   -> Double
 singleUseReliability q mprior obs =
-  fst $ headTail $ uncol $ transientReliability q mprior obs
+  head $ toList $ transientReliability q mprior obs
 
+------------------------------------------------------------------------
+
+{-
 singleUseReliabilityIO :: (KnownNat n, KnownNat (n - 1))
   => (1 <= n - 1, n - 1 <= n, (n - (n - 1)) ~ 1)
 
@@ -314,8 +298,6 @@ singleUseReliabilityIO q fps fpf (s, f) = do
       saveStaticMatrix fpf "%.1f" (pf + f)
   return (singleUseReliability q mprior (s, f))
 
-------------------------------------------------------------------------
-
 loadStaticMatrix :: (KnownNat m, KnownNat n) => FilePath -> IO (Maybe (L m n))
 loadStaticMatrix = fmap (join . fmap create) . D.loadMatrix'
 
@@ -331,42 +313,63 @@ saveStaticMatrix :: (KnownNat m, KnownNat n)
                  -> String   -- ^ "printf" format (e.g. "%.2f", "%g", etc.)
                  -> L m n -> IO ()
 saveStaticMatrix fp format = D.saveMatrix fp format . unwrap
+-}
 
 ------------------------------------------------------------------------
 
-kullbackLeibler :: forall m n. (KnownNat m, KnownNat n)
-  => (KnownNat (n - 1), KnownNat (n - (n - 1)))
-  => ((n - 1) <= n, m <= n, 1 <= (n - 1), ((n - 1) + 1) ~ n)
+-- | Kullback-Leibler matrix discrimination.
 
-  => Sq n -> L m n -> R n -> L m n -> ℝ
-kullbackLeibler p s es et = k' <.> linspace (1, 1)
+{- | >>> :{
+let
+  s = fromList 4 5
+        [ 1,    0,   0,    0,    0
+        , 0,    0.5, 0.5,  0,    0
+        , 0,    0.5, 0.25, 0.25, 0
+        , 0.25, 0,   0,    0.5,  0.25
+        ]
+  es = Vector.fromList [4, 5, 7, 3, 4]
+  et = fromList 4 5
+    [ 4, 0, 0, 0, 0
+    , 0, 3, 2, 0, 0
+    , 0, 4, 1, 2, 0
+    , 1, 0, 0, 1, 1
+    ]
+in kullbackLeibler p s es et
+:}
+3.440540391434413e-2
+-}
+kullbackLeibler
+  :: M      -- ^ Transitions (n x n).
+  -> M      -- ^ Stimulis (m x n).
+  -> V      -- ^ State visitations (n).
+  -> M      -- ^ Stimulus execution (m x n).
+  -> Double -- ^ Discrimination.
+kullbackLeibler p s es et = Vector.sum k'
   where
-    pi' :: R m
-    pi' = fst $ split (pi p)
+    m = nrows s
+    n = ncols p
 
-    es' :: R m
-    es' = fst (split es)
+    pi' :: V
+    pi' = Vector.take m (perron p)
 
-    m :: Int
-    m = size es
+    es' :: V
+    es' = Vector.take m es
 
-    es'' :: L m n
-    es'' = unsafeTransform (\mat -> D.repmat mat 1 m) (col es')
+    es'' :: M
+    es'' = let v = colVector es'
+           in List.foldl' (<|>) v (take (pred n) (repeat v))
 
-    t :: L m n
-    t = es'' / et
+    t :: M
+    t = es'' ./ et
 
-    k :: R m
-    k  = vector $ map sum' $ toRows $ s * dmmap log' (s * t) / log 2
+    k :: V
+    k  = Vector.fromList $ map sum $ toLists $ (1 / log 2) ^* (s .* fmap log' (s .* t))
 
-    k' :: R m
-    k' = pi' * k
+    k' :: V
+    k' = Vector.zipWith (*) pi' k
 
-    log' :: ℝ -> ℝ
+    log' :: Double -> Double
     log' x
       | x == 0    = 0
       | isNaN x   = 0
       | otherwise = log x
-
-    sum' :: R n -> ℝ
-    sum' = (<.> linspace (1, 1))

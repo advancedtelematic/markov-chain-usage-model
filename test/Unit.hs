@@ -1,12 +1,15 @@
-{-# LANGUAGE DataKinds  #-}
-{-# LANGUAGE LambdaCase #-}
+module Unit
+  ( unit_expectSuccessRate
+  , unit_expectTransientReliability
+  , unit_occurenceMean
+  , unit_occurenceVar
+  , unit_docTest
+  ) where
 
-module Unit where
-
-import           Numeric.LinearAlgebra.Static
-                   (L, R, Sq, ℝ, matrix, norm_2, unwrap, vector)
-import           Prelude                      hiding
-                   (pi, (<>))
+import           Data.Matrix
+import qualified Data.Vector      as Vector
+import           Prelude          hiding
+                   (pi)
 import           Test.DocTest
                    (doctest)
 import           Test.Tasty.HUnit
@@ -20,59 +23,55 @@ import           MarkovChain
 -- by Lan Lin, Yufeng Xue and Fengguang Song
 
 -- Transient usage model (transitions from sink omitted).
-q :: L 2 3
-q = matrix
+q :: M
+q = fromList 2 3
   [ 0, 0.5, 0.5
   , 0, 0.5, 0.5
   ]
 
-successes :: L 2 3
-successes = matrix
+successes :: M
+successes = fromList 2 3
   [ 1, 2, 3
   , 4, 5, 6
   ]
 
-failures :: L 2 3
-failures = matrix
+failures :: M
+failures = fromList 2 3
   [ 1, 0, 1
   , 0, 1, 0
   ]
 
 -- Observed transient success rate.
-r :: L 2 3
-r = successRate Nothing (successes, failures)
+sr :: M
+sr = successRate Nothing (successes, failures)
 
 unit_expectSuccessRate :: Assertion
-unit_expectSuccessRate = unwrap r @?= unwrap expected
+unit_expectSuccessRate = sr @?= expected
   where
-    expected :: L 2 3
-    expected = matrix
+    expected :: M
+    expected = fromList 2 3
       [ 2/4, 3/4, 4/6
       , 5/6, 6/8, 7/8
       ]
 
 -- Transient reliability matrix.
-tr :: L 2 1
+tr :: M
 tr = transientReliability q Nothing (successes, failures)
 
 unit_expectTransientReliability :: Assertion
 unit_expectTransientReliability =
-  (norm_2 (tr - expected)) <= 1.0e-6 @? "differs from expected"
+  (norm_F (tr - expected)) <= 1.0e-6 @? "differs from expected"
   where
     a = (4/6)/2
     b = (3/4)*(7/8)/4
     c = (7/8)/2
     d = 1 - (6/8)/2
 
-    expected :: L 2 1
-    expected = matrix
+    expected :: M
+    expected = fromList 2 1
       [ a + b/d
       , c/d
       ]
-
--- Single use reliability mean.
-sur :: ℝ
-sur = singleUseReliability q Nothing (successes, failures)
 
 ------------------------------------------------------------------------
 
@@ -80,8 +79,8 @@ sur = singleUseReliability q Nothing (successes, failures)
 -- by S. J. Prowell
 
 -- Usage model.
-p :: Sq 5
-p = matrix
+p :: M
+p = fromList 5 5
   [ 0, 1,    0,   0,    0
   , 0, 0,    0.5, 0.5,  0
   , 0, 0,    0.5, 0.25, 0.25
@@ -89,55 +88,31 @@ p = matrix
   , 1, 0,    0,   0,    0
   ]
 
-q' :: Sq 4
-q' = reduceCol $ reduceRow p
-
--- Stimulus matrix.
-s :: L 4 5
-s = matrix
---         a     b    c     e     f
-{- E -}  [ 1,    0,   0,    0,    0
-{- A -}  , 0,    0.5, 0.5,  0,    0
-{- B -}  , 0,    0.5, 0.25, 0.25, 0
-{- C -}  , 0.25, 0,   0,    0.5,  0.25
-         ]
+q' :: M
+q' = minorMatrix 5 5 p
 
 -- State occurences.
 unit_occurenceMean :: Assertion
 unit_occurenceMean =
-  norm_2 (firstRow (fundamental q') - expected) <= 1.0e-3 @? "differs from expected"
+  norm_F (rowVector actual .- rowVector expected) <= 1.0e-3 @? "differs from expected"
   where
-    expected :: R 4
-    expected = vector
+    actual :: V
+    actual = getRow 1 (fundamental q')
+
+    expected :: V
+    expected = Vector.fromList
       [ 1.0, 1.231, 1.231, 0.9231 ]
 
 unit_occurenceVar :: Assertion
 unit_occurenceVar =
-  norm_2 (firstRow (variance (fundamental q')) - expected) <= 1.0e-3 @? "differs from expected"
+  norm_F (rowVector actual .- rowVector expected) <= 1.0e-3 @? "differs from expected"
   where
-    expected :: R 4
-    expected = vector
+    actual :: V
+    actual = getRow 1 (variance (fundamental q'))
+
+    expected :: V
+    expected = Vector.fromList
       [ 0, 0.284, 2.556, 0.497 ]
-
--- Stimulus execution.
-et :: L 4 5
-et = matrix
-  [ 4, 0, 0, 0, 0
-  , 0, 3, 2, 0, 0
-  , 0, 4, 1, 2, 0
-  , 1, 0, 0, 1, 1
-  ]
-
--- Vector of state visitations.
-es :: R 5
-es = vector [4, 5, 7, 3, 4]
-
-unit_kullbackLeibler :: Assertion
-unit_kullbackLeibler =
-  kullbackLeibler p s es et - expected <= 1.0e-6 @? "differs from expected"
-  where
-    expected :: ℝ
-    expected = 0.03441
 
 unit_docTest :: IO ()
 unit_docTest = doctest ["src/MarkovChain.hs"]
