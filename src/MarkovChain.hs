@@ -13,9 +13,10 @@ module MarkovChain
   , unsafeTransform
   , fundamental
   , variance
-  , expectedLength
   , pi
   , sigma
+  , nodeProbabilityMatrix
+  , expectedLength
   , successRate
   , transientReliability
   , singleUseReliability
@@ -158,8 +159,8 @@ pi p = n1 / linspace (l, l)
 -- * Sensitivity analysis
 
 -- XXX: Algorithm on p. 31 in report.
-sensitivities :: KnownNat n => Sq n -> Sq n
-sensitivities = undefined
+_sensitivities :: Sq n -> Sq n
+_sensitivities = undefined
 
 ------------------------------------------------------------------------
 -- * Other long run statistics
@@ -197,13 +198,13 @@ sigma stimulus perron = vector
 -- | Compute the probability of occurrence for each state.
 --
 -- >>> unwrap (firstRow (nodeProbabilityMatrix p))
--- [1.0,1.0,0.571428571,0.75]
+-- [1.0,1.0,0.571,0.75]
 nodeProbabilityMatrix :: (KnownNat n, KnownNat (n - 1), KnownNat (n - (n - 1)))
                       => n - 1 <= n
 
                       => Sq n -- ^ Transition matrix.
                       -> Sq (n - 1)
-nodeProbabilityMatrix p = n <> (1 / (diag (takeDiag n)))
+nodeProbabilityMatrix p = n <> (diag (takeDiag (1 / n)))
   where
     n = fundamental (reduceCol (reduceRow p))
 
