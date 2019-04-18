@@ -5,6 +5,7 @@ module MarkovChain
   , (./)
   , (.-)
   , (^*)
+  , (^/)
   , norm_1
   , norm_F
   , fundamental
