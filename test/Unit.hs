@@ -1,5 +1,5 @@
 module Unit
-  ( unit_expectSuccessRate
+  ( unit_expectExpectedArcReliability
   , unit_expectTransientReliability
   , unit_occurenceMean
   , unit_occurenceVar
@@ -43,10 +43,10 @@ failures = fromList 2 3
 
 -- Observed transient success rate.
 sr :: M
-sr = successRate Nothing (successes, failures)
+(sr, _) = expectedArcReliability Nothing (successes, failures)
 
-unit_expectSuccessRate :: Assertion
-unit_expectSuccessRate = sr @?= expected
+unit_expectExpectedArcReliability :: Assertion
+unit_expectExpectedArcReliability = sr @?= expected
   where
     expected :: M
     expected = fromList 2 3
@@ -56,7 +56,7 @@ unit_expectSuccessRate = sr @?= expected
 
 -- Transient reliability matrix.
 tr :: M
-tr = transientReliability q Nothing (successes, failures)
+tr = fst $ transientReliability q Nothing (successes, failures)
 
 unit_expectTransientReliability :: Assertion
 unit_expectTransientReliability =
@@ -108,7 +108,7 @@ unit_occurenceVar =
   norm_F (rowVector actual .- rowVector expected) <= 1.0e-3 @? "differs from expected"
   where
     actual :: V
-    actual = getRow 1 (variance (fundamental q'))
+    actual = getRow 1 (occVariance (fundamental q'))
 
     expected :: V
     expected = Vector.fromList

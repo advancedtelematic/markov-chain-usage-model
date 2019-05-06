@@ -8,12 +8,12 @@ module MarkovChain
   , norm_1
   , norm_F
   , fundamental
-  , variance
+  , occVariance
   , perron
   , sigma
   , nodeProbabilities
   , expectedLength
-  , successRate
+  , expectedArcReliability
   , transientReliability
   , singleUseReliability
   -- , singleUseReliabilityIO
@@ -24,14 +24,16 @@ module MarkovChain
   )
   where
 
-import qualified Data.List   as List
-import           Data.Matrix as Matrix
+import           Data.Bifunctor
+                   (bimap)
+import qualified Data.List      as List
+import           Data.Matrix    as Matrix
 import           Data.Maybe
                    (fromMaybe)
 import           Data.Vector
                    (Vector)
-import qualified Data.Vector as Vector
-import           Prelude     hiding
+import qualified Data.Vector    as Vector
+import           Prelude        hiding
                    (pi)
 
 ------------------------------------------------------------------------
@@ -42,19 +44,24 @@ type V = Vector Double
 -- point-wise
 (.*) :: M -> M -> M
 (.*) = elementwise (*)
+infixl 7 .*
 
 (./) :: M -> M -> M
 (./) = elementwise (/)
+infixl 7 ./
 
 (.-) :: M -> M -> M
 (.-) = elementwise (-)
+infixl 6 .-
 
 -- scalar
-(^/) :: Double -> M -> M
-(^/) x = fmap (x /)
-
 (^*) :: Double -> M -> M
 (^*) x = fmap (x *)
+infixl 7 ^*
+
+(^/) :: Double -> M -> M
+(^/) x = fmap (x /)
+infixl 7 ^/
 
 norm_1 :: M -> Double
 norm_1 = sum . toList
@@ -96,7 +103,7 @@ norm_F = sqrt . sum . toList . fmap (^(2 :: Int))
 fundamental
   :: M   -- ^ Reduced matrix (n x n).
   -> M   -- ^ n x n
-fundamental q = case inverse (identity (nrows q) .- q) of
+fundamental m = case inverse (identity (nrows m) .- m) of
   Left err -> error $ "fundamental: " ++ err
   Right r  -> r
 
@@ -104,17 +111,17 @@ fundamental q = case inverse (identity (nrows q) .- q) of
 -- entry should be read in the same away as that of the fundamental
 -- matrix above.
 --
--- >>> variance (fundamental (minorMatrix 5 5 p :: M))
+-- >>> occVariance (fundamental (minorMatrix 5 5 p :: M))
 -- ┌                                                                                 ┐
 -- │                 0.0 0.28402366863905315  2.5562130177514795  0.4970414201183433 │
 -- │                 0.0 0.28402366863905315  2.5562130177514795  0.4970414201183433 │
 -- │                 0.0 0.20118343195266267  2.4852071005917153  0.5207100591715977 │
 -- │                 0.0  0.3550295857988165  0.9230769230769231  0.2840236686390534 │
 -- └                                                                                 ┘
-variance
+occVariance
   :: M -- ^ Reduced matrix (n x n).
   -> M -- n x n
-variance n = n * (2 ^* diagonal 0 (getDiag n) - identity dim) - (n .* n)
+occVariance n = n * (2 ^* diagonal 0 (getDiag n) - identity dim) - (n .* n)
   where
     dim = nrows n
 
@@ -206,49 +213,69 @@ expectedLength = norm_1 . rowVector . (getRow 1)
 
 -- | Success rate matrix.
 --
--- >>> successRate Nothing (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
--- ┌                                       ┐
+-- >>> expectedArcReliability Nothing (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
+-- (┌                                       ┐
 -- │ 0.9166666666666666 0.8461538461538461 │
 -- │ 0.7857142857142857 0.7333333333333333 │
--- └                                       ┘
+-- └                                       ┘,┌                                             ┐
+-- │  5.876068376068376e-3  9.298393913778529e-3 │
+-- │ 1.1224489795918367e-2 1.2222222222222223e-2 │
+-- └                                             ┘)
 -- >>> :{
---  successRate
+--  expectedArcReliability
 --    (Just (fromList 2 2 [10,10,10,10], fromList 2 2 [1,1,1,1]))
 --    (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
 -- :}
--- ┌                                       ┐
+-- (┌                                       ┐
 -- │ 0.9523809523809523 0.9090909090909091 │
 -- │ 0.8695652173913043 0.8333333333333334 │
--- └                                       ┘
-successRate
+-- └                                       ┘,┌                                             ┐
+-- │ 2.0614306328592042e-3 3.5932446999640674e-3 │
+-- │  4.725897920604915e-3  5.555555555555556e-3 │
+-- └                                             ┘)
+expectedArcReliability
   :: Maybe (M, M)
   -> (M, M)
-  -> M
-successRate mprior (obsSuccs, obsFails) = succs ./ (succs + fails)
+  -> (M, M) -- ^ (mean, variance)
+expectedArcReliability mprior (obsSuccs, obsFails) =
+  ( alpha ./ (alpha + beta)
+  , (alpha .* beta) ./ (ab .* ab .* (ab + ones))
+  )
   where
+    m = nrows obsSuccs
+    n = ncols obsSuccs
+
+    ones :: M
+    ones = Matrix.fromList m n [1,1..]
+
     priorSuccs, priorFails :: M
     (priorSuccs, priorFails) =
-      fromMaybe ( matrix (nrows obsSuccs) (ncols obsSuccs) (const 1)
-                , matrix (nrows obsFails) (ncols obsFails) (const 1)) mprior
+      fromMaybe (ones, ones) mprior
 
-    succs, fails :: M
-    succs = priorSuccs + obsSuccs
-    fails = priorFails + obsFails
+    alpha, beta :: M
+    alpha = priorSuccs + obsSuccs
+    beta = priorFails + obsFails
+
+    ab :: M
+    ab = alpha + beta
 
 transientReliability
   :: M            -- ^ Reduced transition matrix (n-1 x n).
   -> Maybe (M, M) -- ^ Prior successes and failures (n-1 x n).
   -> (M, M)       -- ^ Observed successes and failures (n-1 x n).
-  -> M
-transientReliability q mprior obs = rstar
+  -> (M, M)       -- ^ Reliability vector and reliability variance vector.
+transientReliability q mprior obs =
+  (rstar, vstar)
   where
     n = ncols q
 
-    r :: M
-    r = successRate mprior obs
+    (mean, var) = expectedArcReliability mprior obs
+
+    r1 :: M
+    r1 = mean
 
     fancyR :: M
-    fancyR = q .* r
+    fancyR = q .* r1
 
     fancyRdot :: M -- n-1 x n-1
     fancyRdot = submatrix 1 (pred n) 1 (pred n) fancyR
@@ -259,13 +286,30 @@ transientReliability q mprior obs = rstar
     rstar :: M -- n-1 x 1
     rstar = fundamental fancyRdot * w
 
+    r2 :: M
+    r2 = r1 .* r1 + var
+
+    fancyR' :: M -- n-1 x n-1
+    fancyR' = q .* r2
+
+    fancyRdot' :: M -- n-1 x n-1
+    fancyRdot' = submatrix 1 (pred n) 1 (pred n) fancyR'
+
+    w' :: M -- n-1 x 1
+    w' = colVector $ getCol n fancyR'
+
+    rstar' :: M -- n-1 x 1
+    rstar' = fundamental fancyRdot' * w'
+
+    vstar = rstar' - rstar .* rstar
+
 singleUseReliability
   :: M            -- ^ Reduced transition matrix (n-1 x n).
   -> Maybe (M, M) -- ^ Prior successes and failures (n-1 x n).
   -> (M, M)       -- ^ Observed successes and failures (n-1 x n).
-  -> Double
+  -> (Double, Double)
 singleUseReliability q mprior obs =
-  head $ toList $ transientReliability q mprior obs
+  bimap (head . toList) (head . toList) $ transientReliability q mprior obs
 
 ------------------------------------------------------------------------
 
@@ -289,7 +333,7 @@ singleUseReliabilityIO q fps fpf (s, f) = do
   case mprior of
     Nothing -> do
       -- We need the elementwise @max 1@ below because otherwise we get division
-      -- by zero in 'successRate'. For details see the 2017 paper by by L. Lin,
+      -- by zero in 'expectedArcReliability'. For details see the 2017 paper by by L. Lin,
       -- Y. Xue and F. Song in the README.
       saveStaticMatrix fps "%.1f" (dmmap (max 1) s)
       saveStaticMatrix fpf "%.1f" (dmmap (max 1) f)
