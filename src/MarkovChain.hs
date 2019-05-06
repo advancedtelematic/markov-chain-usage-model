@@ -44,19 +44,24 @@ type V = Vector Double
 -- point-wise
 (.*) :: M -> M -> M
 (.*) = elementwise (*)
+infixl 7 .*
 
 (./) :: M -> M -> M
 (./) = elementwise (/)
+infixl 7 ./
 
 (.-) :: M -> M -> M
 (.-) = elementwise (-)
+infixl 6 .-
 
 -- scalar
 (^*) :: Double -> M -> M
 (^*) x = fmap (x *)
+infixl 7 ^*
 
 (^/) :: Double -> M -> M
 (^/) x = fmap (x /)
+infixl 7 ^/
 
 norm_1 :: M -> Double
 norm_1 = sum . toList
@@ -209,26 +214,32 @@ expectedLength = norm_1 . rowVector . (getRow 1)
 -- | Success rate matrix.
 --
 -- >>> expectedArcReliability Nothing (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
--- ┌                                       ┐
+-- (┌                                       ┐
 -- │ 0.9166666666666666 0.8461538461538461 │
 -- │ 0.7857142857142857 0.7333333333333333 │
--- └                                       ┘
+-- └                                       ┘,┌                                             ┐
+-- │  5.876068376068376e-3  9.298393913778529e-3 │
+-- │ 1.1224489795918367e-2 1.2222222222222223e-2 │
+-- └                                             ┘)
 -- >>> :{
 --  expectedArcReliability
 --    (Just (fromList 2 2 [10,10,10,10], fromList 2 2 [1,1,1,1]))
 --    (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
 -- :}
--- ┌                                       ┐
+-- (┌                                       ┐
 -- │ 0.9523809523809523 0.9090909090909091 │
 -- │ 0.8695652173913043 0.8333333333333334 │
--- └                                       ┘
+-- └                                       ┘,┌                                             ┐
+-- │ 2.0614306328592042e-3 3.5932446999640674e-3 │
+-- │  4.725897920604915e-3  5.555555555555556e-3 │
+-- └                                             ┘)
 expectedArcReliability
   :: Maybe (M, M)
   -> (M, M)
   -> (M, M) -- ^ (mean, variance)
 expectedArcReliability mprior (obsSuccs, obsFails) =
   ( alpha ./ (alpha + beta)
-  , (alpha .* beta) ./ ((ab .* ab) .* (ab + ones))
+  , (alpha .* beta) ./ (ab .* ab .* (ab + ones))
   )
   where
     m = nrows obsSuccs
@@ -290,7 +301,7 @@ transientReliability q mprior obs =
     rstar' :: M -- n-1 x 1
     rstar' = fundamental fancyRdot' * w'
 
-    vstar = rstar' - (rstar .* rstar)
+    vstar = rstar' - rstar .* rstar
 
 singleUseReliability
   :: M            -- ^ Reduced transition matrix (n-1 x n).
