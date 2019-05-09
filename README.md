@@ -51,7 +51,11 @@ Markov chain based usage models.
 
   * [Stopping criteria for statistical
     testing](https://doi.org/10.1016/S0950-5849(00)00110-5) (2000) by K. Sayre
-    and J. H. Poore.
+    and J. H. Poore;
+
+  * [A cost-benefit stopping criterion for statistical
+    testing](https://doi.org/10.1109/HICSS.2004.1265715) (2004) by S. J.
+    Prowell.
 
 ### See also
 
