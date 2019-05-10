@@ -26,14 +26,12 @@ module MarkovChain
 
 import           Data.Bifunctor
                    (bimap)
-import qualified Data.List      as List
-import           Data.Matrix    as Matrix
-import           Data.Maybe
-                   (fromMaybe)
+import qualified Data.List          as List
+import           Data.Matrix        as Matrix
 import           Data.Vector
                    (Vector)
-import qualified Data.Vector    as Vector
-import           Prelude        hiding
+import qualified Data.Vector        as Vector
+import           Prelude            hiding
                    (pi)
 
 ------------------------------------------------------------------------
@@ -227,11 +225,11 @@ expectedLength = norm_1 . rowVector . (getRow 1)
 --    (fromList 2 2 [10,10,10,10], fromList 2 2 [0,1,2,3])
 -- :}
 -- (┌                                       ┐
--- │ 0.9523809523809523 0.9090909090909091 │
--- │ 0.8695652173913043 0.8333333333333334 │
+-- │ 0.9130434782608695              0.875 │
+-- │               0.84 0.8076923076923077 │
 -- └                                       ┘,┌                                             ┐
--- │ 2.0614306328592042e-3 3.5932446999640674e-3 │
--- │  4.725897920604915e-3  5.555555555555556e-3 │
+-- │ 3.3081285444234404e-3              4.375e-3 │
+-- │  5.169230769230769e-3  5.752794214332676e-3 │
 -- └                                             ┘)
 expectedArcReliability
   :: Maybe (M, M)
@@ -248,13 +246,14 @@ expectedArcReliability mprior (obsSuccs, obsFails) =
     ones :: M
     ones = Matrix.fromList m n [1,1..]
 
+    -- In case no prior information is available, a_{i,j} = b_{i,j} = 1.
     priorSuccs, priorFails :: M
     (priorSuccs, priorFails) =
-      fromMaybe (ones, ones) mprior
+      maybe (ones, ones) (bimap (+ ones) (+ ones)) mprior
 
     alpha, beta :: M
     alpha = priorSuccs + obsSuccs
-    beta = priorFails + obsFails
+    beta  = priorFails + obsFails
 
     ab :: M
     ab = alpha + beta
