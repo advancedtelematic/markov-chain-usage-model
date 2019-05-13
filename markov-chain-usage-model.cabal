@@ -2,12 +2,14 @@ cabal-version: 1.12
 
 name:           markov-chain-usage-model
 version:        0.0.0
+synopsis:       Computations for Markov chain usage models
 description:    Please see the README on GitHub at <https://github.com/advancedtelematic/markov-chain-usage-model#readme>
 homepage:       https://github.com/advancedtelematic/markov-chain-usage-model#readme
 bug-reports:    https://github.com/advancedtelematic/markov-chain-usage-model/issues
 author:         Stevan Andjelkovic
 maintainer:     stevan.andjelkovic@here.com
 copyright:      Copyright (C) 2018-2019, HERE Europe B.V.
+category:       Testing
 license:        BSD2
 license-file:   LICENSE
 build-type:     Simple
