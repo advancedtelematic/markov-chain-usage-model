@@ -1,5 +1,10 @@
 ## markov-chain-usage-model
 
+[![Hackage](https://img.shields.io/hackage/v/markov-chain-usage-model.svg)](https://hackage.haskell.org/package/markov-chain-usage-model)
+[![Stackage Nightly](http://stackage.org/package/markov-chain-usage-model/badge/nightly)](http://stackage.org/nightly/package/markov-chain-usage-model)
+[![Stackage LTS](http://stackage.org/package/markov-chain-usage-model/badge/lts)](http://stackage.org/lts/package/markov-chain-usage-model)
+[![Build Status](https://api.travis-ci.org/advancedtelematic/markov-chain-usage-model.svg?branch=master)](https://travis-ci.org/advancedtelematic/markov-chain-usage-model)
+
 `markov-chain-usage-model` is a Haskell library for performing computations on
 Markov chain based usage models.
 
