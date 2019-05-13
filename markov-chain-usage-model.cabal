@@ -13,6 +13,7 @@ category:       Testing
 license:        BSD2
 license-file:   LICENSE
 build-type:     Simple
+tested-with:    GHC == 8.2.2, GHC == 8.4.3, GHC == 8.6.3
 extra-source-files:
     README.md
     CHANGELOG.md
