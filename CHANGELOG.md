@@ -1,3 +1,3 @@
-# Changelog for markov-chain-usage-model
+#### 0.0.0
 
-## Unreleased changes
+* Initial release.
