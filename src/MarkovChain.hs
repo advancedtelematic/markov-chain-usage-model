@@ -13,6 +13,7 @@ module MarkovChain
   , sigma
   , nodeProbabilities
   , expectedLength
+  , stimulusExpectation
   , expectedArcReliability
   , transientReliability
   , singleUseReliability
@@ -79,7 +80,14 @@ norm_F = sqrt . sum . toList . fmap (^(2 :: Int))
        , 0, 0.25, 0,   0,    0.75
        , 1, 0,    0,   0,    0
        ]
-:}
+     s :: M
+     s = fromList 4 5
+       [ 1,    0,   0,    0,    0
+       , 0,    0.5, 0.5,  0,    0
+       , 0,    0.5, 0.25, 0.25, 0
+       , 0.25, 0,   0,    0.5,  0.25
+       ]
+   :}
 -}
 
 ------------------------------------------------------------------------
@@ -179,8 +187,8 @@ sigma stimulus pi = Vector.fromList
   where
     n = Vector.length pi
 
--- ------------------------------------------------------------------------
--- -- * Probability of occurrence for states
+------------------------------------------------------------------------
+-- * Probability of occurrence for states
 
 -- | Compute the probability of occurrence for each state.
 --
@@ -196,7 +204,7 @@ nodeProbabilities p = n * (diagonal 0 (getDiag (1 ^/ n)))
 
 -- (Algorithm 9 on p. 34.)
 
--- ------------------------------------------------------------------------
+------------------------------------------------------------------------
 
 -- | Expected test case length.
 --
@@ -207,7 +215,24 @@ expectedLength
   -> Double
 expectedLength = norm_1 . rowVector . (getRow 1)
 
--- ------------------------------------------------------------------------
+------------------------------------------------------------------------
+
+-- | Number of occurrences of a stimulus in a test case (p.40)
+--
+-- >>> stimulusExpectation (minorMatrix 5 5 p :: M) s
+-- ┌                                                                                                     ┐
+-- │  1.2307692307692308  1.2307692307692308   0.923076923076923  0.7692307692307693 0.23076923076923078 │
+-- │ 0.23076923076923078  1.2307692307692308   0.923076923076923  0.7692307692307693 0.23076923076923078 │
+-- │ 0.15384615384615385  1.1538461538461537  0.6153846153846154  0.8461538461538461 0.15384615384615385 │
+-- │  0.3076923076923077  0.3076923076923077 0.23076923076923078  0.6923076923076923  0.3076923076923077 │
+-- └                                                                                                     ┘
+stimulusExpectation
+  :: M -- ^ Transition matrix (m x m).
+  -> M -- ^ Stimulus matrix (m x n).
+  -> M -- n x n
+stimulusExpectation q s = (fundamental q) * s
+
+------------------------------------------------------------------------
 
 -- | Success rate matrix.
 --
